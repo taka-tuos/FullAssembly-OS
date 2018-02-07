@@ -1,0 +1,43 @@
+     1 00000000                                 ; Free-kernel sample
+     2 00000000                                 ; TAB=4
+     3 00000000                                 
+     4 00000000                                 [BITS 16]
+     5 00000000                                 [INSTRSET "i486p"]
+     6 00000000                                 
+     7                                          		ORG		0x0000
+     8 00000000                                 
+     9 00000000                                 		;MOV		AH,0x05		;INT 0x21 ah=0x05:clear screen
+    10 00000000                                 		;INT		0x21
+    11 00000000                                 		
+    12 00000000 B4 01                           		MOV		AH,0x01		;INT 0x21 ah=0x01,si=string addres:put string
+    13 00000002 BB 0003                         		MOV		BX,0x0003
+    14 00000005 BE 000D                         		MOV		SI,exanple
+    15 00000008 CD 21                           		INT		0x21
+    16 0000000A                                 		;MOV		BX,0x0000
+    17 0000000A                                 		;MOV		AH,0x00
+    18 0000000A                                 		;MOV		AL,0x11
+    19 0000000A                                 		;INT		0x10
+    20 0000000A                                 		;MOV		AX,0xa000
+    21 0000000A                                 		;MOV		DS,AX
+    22 0000000A                                 		;MOV		BX,0x0000
+    23 0000000A                                 
+    24 0000000A                                 loop:
+    25 0000000A                                 		;MOV		AH,0x06		;INT 0x21 ah=0x06:get key
+    26 0000000A                                 		;INT		0x21
+    27 0000000A                                 		;MOV		AH,0x02		;INT 0x21 ah=0x02:put char
+    28 0000000A                                 		;INT		0x21
+    29 0000000A                                 		;MOV		BX,0x0003
+    30 0000000A F4                              		HLT
+    31 0000000B                                 		;MOV		AH,0x01		;INT 0x21 ah=0x01,si=string addres:put string
+    32 0000000B                                 		;ADD		BX,0x01
+    33 0000000B                                 		;AND		BX,0x0f
+    34 0000000B                                 		;MOV		SI,exanple
+    35 0000000B                                 		;INT		0x21
+    36 0000000B                                 		;MOV		[DS:BX],BYTE 0xcc
+    37 0000000B                                 		;ADD		BX,0x0001
+    38 0000000B EB FD                           		JMP		loop
+    39 0000000D                                 
+    40 0000000D                                 exanple:
+    41 0000000D 31 36 63 6F 6C 6F 72 20 74 65   		DB		"16color test"
+       00000017 73 74 
+    42 00000019 0D 0A                           		DB		0x0d,0x0a

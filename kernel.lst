@@ -1,0 +1,386 @@
+     1 00000000                                 ; Free-kernel
+     2 00000000                                 ; TAB=4
+     3 00000000                                 
+     4 00000000                                 
+     5 00000000                                 [BITS 16]
+     6 00000000                                 [INSTRSET "i486p"]
+     7 00000000                                 
+     8                                          		ORG		0xc200			; Ç±ÇÃÉvÉçÉOÉâÉÄÇ™Ç«Ç±Ç…ì«Ç›çûÇ‹ÇÍÇÈÇÃÇ©
+     9 0000C200                                 
+    10 0000C200 B8 0003                         		MOV		AX,0x0003
+    11 0000C203 CD 10                           		INT		0x10
+    12 0000C205                                 
+    13 0000C205 BE C3D9                         		MOV		SI,bootmsg
+    14 0000C208 E8 0151                         		CALL	puts
+    15 0000C20B                                 		
+    16 0000C20B BE C40B                         		MOV		SI,fontmsg
+    17 0000C20E E8 014B                         		CALL	puts
+    18 0000C211 E8 0108                         		CALL	msg_ok
+    19 0000C214                                 		
+    20 0000C214 E8 015B                         		CALL	init_ivt
+    21 0000C217 BE C425                         		MOV		SI,ivtmsg
+    22 0000C21A E8 013F                         		CALL	puts
+    23 0000C21D E8 00FC                         		CALL	msg_ok
+    24 0000C220                                 		
+    25 0000C220 BE C43F                         		MOV		SI,memmsg
+    26 0000C223 E8 0136                         		CALL	puts
+    27 0000C226 E8 00F3                         		CALL	msg_ok
+    28 0000C229 BE C467                         		MOV		SI,cr_lf
+    29 0000C22C E8 012D                         		CALL	puts
+    30 0000C22F                                 		
+    31 0000C22F BE C46A                         		MOV		SI,execmsg
+    32 0000C232 E8 0127                         		CALL	puts
+    33 0000C235                                 		
+    34 0000C235 E8 0050                         		CALL	start_exec
+    35 0000C238                                 
+    36 0000C238                                 fin:
+    37 0000C238 F4                              		HLT
+    38 0000C239 EB FD                           		JMP		fin
+    39 0000C23B                                 
+    40 0000C23B                                 malloc:
+    41 0000C23B BF C4C8                         		MOV		DI,memory_table
+    42 0000C23E BD C4CC                         		MOV		BP,memory_table+4
+    43 0000C241                                 search_loop:
+    44 0000C241 80 7E 00 00                     		CMP		BYTE [BP],0
+    45 0000C245 74 05                           		JE		alloc
+    46 0000C247 83 C5 01                        		ADD		BP,1
+    47 0000C24A EB F5                           		JMP		search_loop
+    48 0000C24C                                 alloc:
+    49 0000C24C C6 46 00 01                     		MOV		BYTE [BP],1
+    50 0000C250 81 ED C4CC                      		SUB		BP,memory_table+4
+    51 0000C254 69 ED 0100                      		IMUL	BP,256
+    52 0000C258 89 EA                           		MOV		DX,BP
+    53 0000C25A 03 15                           		ADD		DX,[DI]
+    54 0000C25C                                 alloc_loop:
+    55 0000C25C 2D 0001                         		SUB		AX,1
+    56 0000C25F 83 C5 01                        		ADD		BP,1
+    57 0000C262 3D 0000                         		CMP		AX,0
+    58 0000C265 74 06                           		JE		alloc_end
+    59 0000C267 C6 46 00 01                     		MOV		BYTE [BP],1
+    60 0000C26B EB EF                           		JMP		alloc_loop
+    61 0000C26D                                 alloc_end:
+    62 0000C26D C3                              		RET
+    63 0000C26E                                 
+    64 0000C26E                                 free:
+    65 0000C26E 81 C2 C4CC                      		ADD		DX,memory_table+4
+    66 0000C272 89 D3                           		MOV		BX,DX
+    67 0000C274 C6 07 00                        		MOV		BYTE [BX],0
+    68 0000C277                                 free_loop:
+    69 0000C277 2D 0001                         		SUB		AX,1
+    70 0000C27A 83 C3 01                        		ADD		BX,1
+    71 0000C27D 3D 0000                         		CMP		AX,0
+    72 0000C280 74 05                           		JE		free_end
+    73 0000C282 C6 07 00                        		MOV		BYTE [BX],0
+    74 0000C285 EB F0                           		JMP		free_loop
+    75 0000C287                                 free_end:
+    76 0000C287 C3                              		RET
+    77 0000C288                                 
+    78 0000C288                                 start_exec:
+    79 0000C288 BB A600                         		MOV		BX,0x8000+0x2600
+    80 0000C28B                                 exec_find:
+    81 0000C28B 89 DF                           		MOV		DI,BX
+    82 0000C28D E8 005B                         		CALL	namecmp
+    83 0000C290 83 FA 01                        		CMP		DX,0x01
+    84 0000C293 74 0B                           		JE		exec_cpy
+    85 0000C295 83 C3 20                        		ADD		BX,0x20
+    86 0000C298 81 FB FF00                      		CMP		BX,0xff00
+    87 0000C29C 74 33                           		JE		exec_err
+    88 0000C29E EB EB                           		JMP		exec_find
+    89 0000C2A0                                 exec_cpy:
+    90 0000C2A0 83 C3 1A                        		ADD		BX,0x1a
+    91 0000C2A3 8B 07                           		MOV		AX,[BX]
+    92 0000C2A5 69 C0 0200                      		IMUL	AX,512
+    93 0000C2A9 05 3E00                         		ADD		AX,0x3e00
+    94 0000C2AC 05 8000                         		ADD		AX,0x8000
+    95 0000C2AF BA 4500                         		MOV		DX,0x4500
+    96 0000C2B2 8E EA                           		MOV		GS,DX
+    97 0000C2B4 89 C6                           		MOV		SI,AX
+    98 0000C2B6 BF 0000                         		MOV		DI,0
+    99 0000C2B9 B9 1000                         		MOV		CX,0x1000
+   100 0000C2BC E8 001B                         		CALL	memcpy
+   101 0000C2BF                                 exec_jmp:
+   102 0000C2BF B8 4500                         		MOV		AX,0x4500
+   103 0000C2C2 8E D8                           		MOV		DS,AX
+   104 0000C2C4 8E C0                           		MOV		ES,AX
+   105 0000C2C6 8E E0                           		MOV		FS,AX
+   106 0000C2C8 8E E8                           		MOV		GS,AX
+   107 0000C2CA 8E D0                           		MOV		SS,AX
+   108 0000C2CC EA 0000 4500                    		JMP		0x4500:0x0000
+   109 0000C2D1                                 exec_err:
+   110 0000C2D1 BE C49F                         		MOV		SI,execerrmsg
+   111 0000C2D4 E8 0085                         		CALL	puts
+   112 0000C2D7 E9 FF5E                         		JMP		fin
+   113 0000C2DA                                 
+   114 0000C2DA                                 memcpy:
+   115 0000C2DA 8A 04                           		MOV		AL,[SI]
+   116 0000C2DC 83 C6 01                        		ADD		SI,1
+   117 0000C2DF 65 88 05                        		MOV		[GS:DI],AL
+   118 0000C2E2 83 C7 01                        		ADD		DI,1
+   119 0000C2E5 83 E9 01                        		SUB		CX,1
+   120 0000C2E8 75 F0                           		JNZ		memcpy			; à¯Ç´éZÇµÇΩåãâ Ç™0Ç≈Ç»ÇØÇÍÇŒmemcpyÇ÷
+   121 0000C2EA C3                              		RET
+   122 0000C2EB                                 
+   123 0000C2EB                                 namecmp:
+   124 0000C2EB                                 cmp_1:
+   125 0000C2EB 66 81 3D 4F545541               		CMP		DWORD [DI],'AUTO'
+   126 0000C2F2 74 04                           		JE		cmp_2
+   127 0000C2F4 BA 0000                         		MOV		DX,0x00
+   128 0000C2F7 C3                              		RET
+   129 0000C2F8                                 cmp_2:
+   130 0000C2F8 83 C7 04                        		ADD		DI,4
+   131 0000C2FB 66 81 3D 43455845               		CMP		DWORD [DI],'EXEC'
+   132 0000C302 74 04                           		JE		cmp_3
+   133 0000C304 BA 0000                         		MOV		DX,0x00
+   134 0000C307 C3                              		RET
+   135 0000C308                                 cmp_3:
+   136 0000C308 83 C7 04                        		ADD		DI,4
+   137 0000C30B 66 81 3D 204E4942               		CMP		DWORD [DI],'BIN '
+   138 0000C312 74 04                           		JE		cmp_end
+   139 0000C314 BA 0000                         		MOV		DX,0x00
+   140 0000C317 C3                              		RET
+   141 0000C318                                 cmp_end:
+   142 0000C318 BA 0001                         		MOV		DX,0x01
+   143 0000C31B C3                              		RET
+   144 0000C31C                                 
+   145 0000C31C                                 msg_ok:
+   146 0000C31C BE C459                         		MOV		SI,okmsg
+   147 0000C31F E8 0041                         		CALL	puts_ok
+   148 0000C322 BE C463                         		MOV		SI,msg_end
+   149 0000C325 E8 0034                         		CALL	puts
+   150 0000C328 C3                              		RET
+   151 0000C329                                 
+   152 0000C329                                 msg_ng:
+   153 0000C329 BE C45E                         		MOV		SI,ngmsg
+   154 0000C32C E8 003B                         		CALL	puts_ng
+   155 0000C32F BE C463                         		MOV		SI,msg_end
+   156 0000C332 E8 0027                         		CALL	puts
+   157 0000C335 C3                              		RET
+   158 0000C336                                 
+   159 0000C336                                 
+   160 0000C336                                 puts_col:
+   161 0000C336 8C D8                           		MOV		AX,DS
+   162 0000C338 8E C0                           		MOV		ES,AX
+   163 0000C33A 89 F7                           		MOV		DI,SI
+   164 0000C33C 31 C9                           		XOR		CX,CX
+   165 0000C33E F7 D1                           		NOT		CX
+   166 0000C340 30 C0                           		XOR		AL,AL
+   167 0000C342 FC                              		CLD
+   168 0000C343 F2                              		REPNE
+   169 0000C344 AE                              		SCASB
+   170 0000C345 F7 D1                           		NOT		CX
+   171 0000C347 49                              		DEC		CX
+   172 0000C348 51                              		PUSH	CX
+   173 0000C349                                 		
+   174 0000C349 B8 0300                         		MOV		AX,0x0300
+   175 0000C34C 53                              		PUSH	BX
+   176 0000C34D BB 0000                         		MOV		BX,0x0000
+   177 0000C350 CD 10                           		INT		0x10
+   178 0000C352 5B                              		POP		BX
+   179 0000C353                                 		
+   180 0000C353 59                              		POP		CX
+   181 0000C354 B8 1301                         		MOV		AX,0x1301
+   182 0000C357 89 F5                           		MOV		BP,SI
+   183 0000C359 CD 10                           		INT		0x10
+   184 0000C35B C3                              		RET
+   185 0000C35C                                 
+   186 0000C35C                                 puts:
+   187 0000C35C BB 0007                         		MOV		BX,0x0007
+   188 0000C35F E8 FFD4                         		CALL	puts_col
+   189 0000C362 C3                              		RET
+   190 0000C363                                 
+   191 0000C363                                 puts_ok:
+   192 0000C363 BB 0002                         		MOV		BX,0x0002
+   193 0000C366 E8 FFCD                         		CALL	puts_col
+   194 0000C369 C3                              		RET
+   195 0000C36A                                 
+   196 0000C36A                                 puts_ng:
+   197 0000C36A BB 0004                         		MOV		BX,0x0004
+   198 0000C36D E8 FFC6                         		CALL	puts_col
+   199 0000C370 C3                              		RET
+   200 0000C371                                 
+   201 0000C371                                 ret:
+   202 0000C371 C3                              		RET
+   203 0000C372                                 
+   204 0000C372                                 init_ivt:
+   205 0000C372 FA                              		CLI
+   206 0000C373 A1 C58B                         		MOV		AX,[int21h]
+   207 0000C376 A3 0084                         		MOV		[4*0x21],AX
+   208 0000C379 A1 C58D                         		MOV		AX,[int21h+2]
+   209 0000C37C A3 0086                         		MOV		[4*0x21+2],AX
+   210 0000C37F FB                              		STI
+   211 0000C380 C3                              		RET
+   212 0000C381                                 		
+   213 0000C381                                 
+   214 0000C381                                 call_kernel_api:
+   215 0000C381 E8 0001                         		CALL	kernel_api
+   216 0000C384 CF                              		IRET
+   217 0000C385                                 
+   218 0000C385                                 ;+----------------------+
+   219 0000C385                                 ;|     section  API     |
+   220 0000C385                                 ;+----------------------+
+   221 0000C385                                 
+   222 0000C385                                 kernel_api:
+   223 0000C385 80 FC 00                        		CMP		AH,0x00
+   224 0000C388 74 1F                           		JE		api_getver
+   225 0000C38A                                 		
+   226 0000C38A 80 FC 01                        		CMP		AH,0x01
+   227 0000C38D 74 1F                           		JE		api_puts
+   228 0000C38F                                 		
+   229 0000C38F 80 FC 02                        		CMP		AH,0x02
+   230 0000C392 74 1F                           		JE		api_putc
+   231 0000C394                                 		
+   232 0000C394 80 FC 03                        		CMP		AH,0x03
+   233 0000C397 74 27                           		JE		api_malloc
+   234 0000C399                                 		
+   235 0000C399 80 FC 04                        		CMP		AH,0x04
+   236 0000C39C 74 27                           		JE		api_free
+   237 0000C39E                                 		
+   238 0000C39E 80 FC 05                        		CMP		AH,0x05
+   239 0000C3A1 74 27                           		JE		api_clear
+   240 0000C3A3                                 		
+   241 0000C3A3 80 FC 06                        		CMP		AH,0x06
+   242 0000C3A6 74 2B                           		JE		api_getc
+   243 0000C3A8                                 api_end:
+   244 0000C3A8 C3                              		RET
+   245 0000C3A9                                 
+   246 0000C3A9                                 
+   247 0000C3A9                                 api_getver:
+   248 0000C3A9 BA 0064                         		MOV		DX,100
+   249 0000C3AC EB FA                           		JMP		api_end
+   250 0000C3AE                                 
+   251 0000C3AE                                 api_puts:
+   252 0000C3AE E8 FF85                         		CALL	puts_col
+   253 0000C3B1 EB F5                           		JMP		api_end
+   254 0000C3B3                                 
+   255 0000C3B3                                 api_putc:
+   256 0000C3B3 66 60                           		PUSHAD
+   257 0000C3B5 B4 0E                           		MOV		AH,0x0e
+   258 0000C3B7 BB 0007                         		MOV		BX,0x07
+   259 0000C3BA CD 10                           		INT		0x10
+   260 0000C3BC 66 61                           		POPAD
+   261 0000C3BE EB E8                           		JMP		api_end
+   262 0000C3C0                                 
+   263 0000C3C0                                 api_malloc:
+   264 0000C3C0 E8 FE78                         		CALL	malloc
+   265 0000C3C3 EB E3                           		JMP		api_end
+   266 0000C3C5                                 
+   267 0000C3C5                                 api_free:
+   268 0000C3C5 E8 FEA6                         		CALL	free
+   269 0000C3C8 EB DE                           		JMP		api_end
+   270 0000C3CA                                 
+   271 0000C3CA                                 api_clear:
+   272 0000C3CA 60                              		PUSHAW
+   273 0000C3CB B8 0003                         		MOV		AX,0x0003
+   274 0000C3CE CD 10                           		INT		0x10
+   275 0000C3D0 61                              		POPAW
+   276 0000C3D1 EB D5                           		JMP		api_end
+   277 0000C3D3                                 
+   278 0000C3D3                                 api_getc:
+   279 0000C3D3 B4 00                           		MOV		AH,0x00
+   280 0000C3D5 CD 16                           		INT		0x16
+   281 0000C3D7 EB CF                           		JMP		api_end
+   282 0000C3D9                                 
+   283 0000C3D9                                 ;+----------------------+
+   284 0000C3D9                                 ;|    end section API   |
+   285 0000C3D9                                 ;+----------------------+
+   286 0000C3D9                                 
+   287 0000C3D9                                 bootmsg:
+   288 0000C3D9 46 72 65 65 4B 65 72 6E 65 6C   		DB		"FreeKernel 0.01 build 0 build date:2014/10/03"
+       0000C3E3 20 30 2E 30 31 20 62 75 69 6C 
+       0000C3ED 64 20 30 20 62 75 69 6C 64 20 
+       0000C3F7 64 61 74 65 3A 32 30 31 34 2F 
+       0000C401 31 30 2F 30 33 
+   289 0000C406 0D 0A                           		DB		0x0d,0x0a
+   290 0000C408 0D 0A                           		DB		0x0d,0x0a
+   291 0000C40A 00                              		DB		0x00
+   292 0000C40B                                 
+   293 0000C40B                                 fontmsg:
+   294 0000C40B 66 6F 6E 74 20 69 6E 69 74 20   		DB		"font init               ["
+       0000C415 20 20 20 20 20 20 20 20 20 20 
+       0000C41F 20 20 20 20 5B 
+   295 0000C424 00                              		DB		0x00
+   296 0000C425                                 
+   297 0000C425                                 ivtmsg:
+   298 0000C425 69 76 74 20 69 6E 69 74 20 20   		DB		"ivt init                ["
+       0000C42F 20 20 20 20 20 20 20 20 20 20 
+       0000C439 20 20 20 20 5B 
+   299 0000C43E 00                              		DB		0x00
+   300 0000C43F                                 
+   301 0000C43F                                 
+   302 0000C43F                                 memmsg:
+   303 0000C43F 6D 65 6D 6F 72 79 5F 74 61 62   		DB		"memory_table init       ["
+       0000C449 6C 65 20 69 6E 69 74 20 20 20 
+       0000C453 20 20 20 20 5B 
+   304 0000C458 00                              		DB		0x00
+   305 0000C459                                 
+   306 0000C459                                 okmsg:
+   307 0000C459 20 4F 4B 20                     		DB		" OK "
+   308 0000C45D 00                              		DB		0x00
+   309 0000C45E                                 
+   310 0000C45E                                 ngmsg:
+   311 0000C45E 20 4E 47 20                     		DB		" NG "
+   312 0000C462 00                              		DB		0x00
+   313 0000C463                                 
+   314 0000C463                                 msg_end:
+   315 0000C463 5D                              		DB		"]"
+   316 0000C464 0D 0A                           		DB		0x0d,0x0a
+   317 0000C466 00                              		DB		0x00
+   318 0000C467                                 
+   319 0000C467                                 cr_lf:
+   320 0000C467 0D 0A                           		DB		0x0d,0x0a
+   321 0000C469 00                              		DB		0x00
+   322 0000C46A                                 
+   323 0000C46A                                 execmsg:
+   324 0000C46A 65 78 65 63 20 66 69 6C 65 20   		DB		"exec file : AUTOEXEC.BIN"
+       0000C474 3A 20 41 55 54 4F 45 58 45 43 
+       0000C47E 2E 42 49 4E 
+   325 0000C482 0D 0A                           		DB		0x0d,0x0a
+   326 0000C484 73 74 61 72 74 69 6E 67 20 41   		DB		"starting AUTOEXEC.BIN..."
+       0000C48E 55 54 4F 45 58 45 43 2E 42 49 
+       0000C498 4E 2E 2E 2E 
+   327 0000C49C 0D 0A                           		DB		0x0d,0x0a
+   328 0000C49E 00                              		DB		0x00
+   329 0000C49F                                 
+   330 0000C49F                                 execerrmsg:
+   331 0000C49F 41 55 54 4F 45 58 45 43 2E 42   		DB		"AUTOEXEC.BIN not found! system halted."
+       0000C4A9 49 4E 20 6E 6F 74 20 66 6F 75 
+       0000C4B3 6E 64 21 20 73 79 73 74 65 6D 
+       0000C4BD 20 68 61 6C 74 65 64 2E 
+   332 0000C4C5 0D 0A                           		DB		0x0d,0x0a
+   333 0000C4C7 00                              		DB		0x00
+   334 0000C4C8                                 
+   335 0000C4C8                                 memory_table:
+   336 0000C4C8 4600                            		DW		0x4600
+   337 0000C4CA 0000                            		DW		0x0000
+   338 0000C4CC 00 00 00 00 00 00 00 00 00 00   		RESB	0xba
+       0000C4D6 00 00 00 00 00 00 00 00 00 00 
+       0000C4E0 00 00 00 00 00 00 00 00 00 00 
+       0000C4EA 00 00 00 00 00 00 00 00 00 00 
+       0000C4F4 00 00 00 00 00 00 00 00 00 00 
+       0000C4FE 00 00 00 00 00 00 00 00 00 00 
+       0000C508 00 00 00 00 00 00 00 00 00 00 
+       0000C512 00 00 00 00 00 00 00 00 00 00 
+       0000C51C 00 00 00 00 00 00 00 00 00 00 
+       0000C526 00 00 00 00 00 00 00 00 00 00 
+       0000C530 00 00 00 00 00 00 00 00 00 00 
+       0000C53A 00 00 00 00 00 00 00 00 00 00 
+       0000C544 00 00 00 00 00 00 00 00 00 00 
+       0000C54E 00 00 00 00 00 00 00 00 00 00 
+       0000C558 00 00 00 00 00 00 00 00 00 00 
+       0000C562 00 00 00 00 00 00 00 00 00 00 
+       0000C56C 00 00 00 00 00 00 00 00 00 00 
+       0000C576 00 00 00 00 00 00 00 00 00 00 
+       0000C580 00 00 00 00 00 00 
+   339 0000C586                                 
+   340 0000C586                                 keyboard_buf:
+   341 0000C586 00                              		DB		0x00
+   342 0000C587                                 
+   343 0000C587                                 keyboard_mode:
+   344 0000C587 00                              		DB		0x00		;L shift
+   345 0000C588 00                              		DB		0x00		;R shift
+   346 0000C589 00                              		DB		0x00		;capslock
+   347 0000C58A 00                              		DB		0x00		;numlock
+   348 0000C58B                                 
+   349 0000C58B                                 int21h:
+   350 0000C58B C381                            		DW		call_kernel_api
+   351 0000C58D 0000                            		DW		0x0000
